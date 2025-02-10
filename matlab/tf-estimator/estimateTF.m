@@ -12,6 +12,10 @@ function [TF, Fit, SimOut] = estimateTF(Time, In, Out, MaxNp, IOD)
     %   Returns :
     %       - TF :      The estimated TF
     %       - Fit :     The fit percentage over the input data.
+    %       - SimOut :  The values computed by Matlab that correspond to
+    %                   the TF response to the input data. Used to get the
+    %                   matching value and for the user to estimate the
+    %                   best option !
     %
     %   Description :
     %
