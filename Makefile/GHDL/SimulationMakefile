@@ -1,0 +1,49 @@
+# =====================================================================
+# Simple makefile to compile and simulate all of the VHDL designs.
+# =====================================================================
+
+# =====================================================================
+# VARIABLES
+# =====================================================================
+# Simulation duration
+LEN = 100ms
+
+# VHDL sources (only used for syntax checking and compilation)
+VHDLSRC = 	shiftreg.vhd
+VHDLSRC += 	usart_par.vhd
+VHDLSRC += 	usart.vhd
+VHDLSRC += 	usart_tb.vhd
+
+VHDLTOP = 	usart_tb # Set here the top name. Not the file name !
+
+# Simuluation output file
+WAVEFILE = 	wave.ghw
+
+# Get the build files
+VHDLBUILD = $(foreach FILE, VHDLSRC, build/FILE)
+
+# Syntax and build helpers...
+syntax:
+	ghdl -s $(VHDLSRC)
+
+compile:
+	ghdl -a $(VHDLSRC)
+	
+# Elaboration and runing
+elaborate: compile
+	ghdl -m $(VHDLTOP)
+
+simulate: elaborate
+	ghdl -r $(VHDLTOP) --wave=$(WAVEFILE) --stop-time=$(LEN)
+
+show: simulate
+	gtkwave $(WAVEFILE)
+
+all: elaborate simulate show
+
+clean:
+	@rm -f *.o
+	@rm -f $(VHDLTOP)
+	@rm -f *.cf
+	@rm -f *.ghw
+
