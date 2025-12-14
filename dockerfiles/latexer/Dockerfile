@@ -2,7 +2,7 @@
 # Container init
 # ================================================================================================
 # Base image
-FROM ubuntu:24.04
+FROM texlive/texlive:TL2024-historic
 WORKDIR /work
 
 # Updating OS to the latest versions
@@ -10,54 +10,35 @@ RUN apt-get update && apt-get upgrade -y
 
 # Install software build dependencies
 RUN apt-get install -y \
-    cmake \
-    make \
-    texinfo \
-    automake \
-    autoconf \
-    gcc \
-    g++ \
-    build-essential \
     git \
-    wget \
-    ccache
+    inkscape graphviz gnuplot \
+    python3 python3-pip \
+    ghostscript \
+    evince \
+    wget2
 
-# Creating future folders
-RUN mkdir /work/build_tmp
-
-# Creating output folders
-RUN mkdir /tools
-RUN mkdir /tools/inkscape
-RUN mkdir /tools/ghostscript
-RUN mkdir /tools/texlive
-RUN mkdir /tools/evince
+# Locking TLMGR to the correct version (remove a warning for cross year updates)
+RUN tlmgr option repository https://ftp.tu-chemnitz.de/pub/tug/historic/systems/texlive/2024/tlnet-final
+RUN tlmgr update --self
 
 # ================================================================================================
-# Tools installation
+# MANAGING TEMPLATES
 # ================================================================================================
-# Fetching the different elements : 
-WORKDIR /work/build_tmp
-RUN git clone --recursive -j 4 https://gitlab.com/inkscape/inkscape.git inkscape
-RUN git clone --recursive -j 4 https://github.com/ArtifexSoftware/ghostpdl.git ghostscript
-RUN git clone --recursive -j 4 https://github.com/GNOME/evince.git evince
-RUN git clone --recursive -j 4 git://git.texlive.info/CTAN texlive
+# Create target directories
+RUN mkdir -p /tools/templates
+RUN mkdir -p /tools/scripts
 
-# Compiling the different tools :
-# ---------------------
-# Inkscape
-# ---------------------
+# Import data into the image
+COPY scripts /tools/scripts
 
-# ---------------------
-# Ghostscript
-# ---------------------
+# Make the scripts executables
+RUN chmod +x /tools/scripts/package-update.sh
+RUN chmod +x /tools/scripts/template-update.sh
 
-# ---------------------
-# Evince
-# ---------------------
-
-# ---------------------
-# Texlive
-# ---------------------
+# Fetching and updating packages : 
+WORKDIR /tools/templates
+RUN sh /tools/scripts/template-update.sh
+RUN sh /tools/scripts/package-update.sh
 
 # ================================================================================================
 # Display configuration
@@ -77,16 +58,14 @@ ENV DISPLAY=:0
 # Finishing up things
 # ================================================================================================
 # Cleaning up the build folders 
-# RUN rm -rf /work/build_tmp
+RUN rm -rf /var/lib/apt/lists/*
 
 # Setting up workir
 WORKDIR /work
 
-# Setting up the PATH
-ENV PATH="/tools/inkscape/bin:${PATH}"
-ENV PATH="/tools/ghostscript/bin:${PATH}"
-ENV PATH="/tools/evince/bin:${PATH}"
-ENV PATH="/tools/texlive/bin:${PATH}"
+# Updating path (including scripts)
+ENV PATH="/tools/tcreator/:${PATH}"
+ENV PATH="/tools/scripts/:${PATH}"
 
 # Setting CMD / ENTRYPOINT
 CMD ["/bin/sh"]

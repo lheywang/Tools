@@ -1,7 +1,7 @@
 # Build the docker and add it :
 
 setup:
-	sudo docker build -t simker docker/
+	sudo docker build -t latexer .
 	xhost +local:docker
 
 run:
@@ -11,4 +11,4 @@ run:
     		--net=host \
     		-e DISPLAY=$DISPLAY \
     		-v /tmp/.X11-unix:/tmp/.X11-unix \
-    		simker
+    		latexer

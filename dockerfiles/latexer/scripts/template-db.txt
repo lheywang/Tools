@@ -1,0 +1,9 @@
+# Global repo for tex projects : 
+https://github.com/chrrel/latex-report-template.git
+https://github.com/subidit/rover-resume.git
+https://github.com/latextemplates/ieee-enhanced.git
+https://github.com/dpmj/alcazar.git
+https://github.com/AlphaJack/masterthesis.git
+
+# Customisations files : 
+https://github.com/joaomlourenco/novathesis.git

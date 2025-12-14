@@ -1,0 +1,40 @@
+# Geometry
+geometry
+
+# Encodings
+babel
+
+# Graphic images
+epstopdf
+
+# Figures
+float
+caption
+subfig
+
+# Tables
+multirow
+
+# Maths
+amsmath
+siunitx
+
+# Code
+minted
+
+# Tikz
+pgfplots
+circuitikz
+tikz-timing
+
+# Biblio
+biblatex
+
+# Fancy headers
+fancyhdr
+
+# Links
+hyperref
+
+# Placement
+placeins
