@@ -6,7 +6,8 @@ FROM ubuntu:24.04
 WORKDIR /work
 
 # Updating OS to the latest versions
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update --fix-missing && apt-get upgrade -y
+RUN apt-get install -y -f
 
 # Install software build dependencies
 RUN apt-get install -y \
@@ -64,7 +65,8 @@ RUN apt-get install -y \
     bison \
     libcairo2-dev \
     xcb \
-    libxrender-dev
+    libxrender-dev \
+    xterm
 
 # GAW3 deps :
 RUN apt-get install -y \
