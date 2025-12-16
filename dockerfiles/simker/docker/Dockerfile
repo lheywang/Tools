@@ -229,6 +229,7 @@ ENV PATH="/tools/ngspice/bin:${PATH}"
 ENV PATH="/tools/verilator/bin:${PATH}"
 ENV PATH="/tools/xschem/usr/local/bin:${PATH}"
 
+# Adding a variable to make sure xschem can start
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 
 # Setting CMD / ENTRYPOINT
