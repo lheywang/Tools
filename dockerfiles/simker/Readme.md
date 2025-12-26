@@ -10,6 +10,7 @@ It bundle different tools :
 - Gaw3
 - ngspice
 - xschem
+- openvaf-r
 
 To install it, run 
 
