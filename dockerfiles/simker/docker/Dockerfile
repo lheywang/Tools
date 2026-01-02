@@ -302,13 +302,10 @@ RUN apt-get install -y\
    nano
 
 # ===============================================================================================
-# Import binaries from the previously built image
+# Install dependencies
 # ===============================================================================================
 # Create the folder
 RUN mkdir /tools
-
-# Copy binaries
-COPY --from=build /tools /tools
 
 # Installing runtime dependencies
 RUN apt-get install -y \
@@ -345,6 +342,9 @@ RUN apt-get install -y \
 # Set default to DISPLAY
 ENV DISPLAY=:0
 
+# ===============================================================================================
+# Setting the path and variables
+# ===============================================================================================
 # Setting up the PATH
 ENV PATH="/tools/gaw3/bin:${PATH}"
 ENV PATH="/tools/ghdl/bin:${PATH}"
@@ -354,11 +354,23 @@ ENV PATH="/tools/verilator/bin:${PATH}"
 ENV PATH="/tools/xschem/usr/local/bin:${PATH}"
 ENV PATH="/tools/openvaf-r/bin/:${PATH}"
 
-# Cleaning some things
-RUN rm -rf /var/lib/apt/lists/*
-
 # Adding a variable to make sure xschem can start
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 
+# ===============================================================================================
+# Final cleanup
+# ===============================================================================================
+# Cleaning some things
+RUN rm -rf /var/lib/apt/lists/*
+
+# ===============================================================================================
+# Import binaries 
+# ===============================================================================================
+# Copy binaries (last step, to let all the previous step run while building the first image)
+COPY --from=build /tools /tools
+
+# ===============================================================================================
+# Set docker entrypoint
+# ===============================================================================================
 # Setting CMD / ENTRYPOINT
 CMD ["/bin/sh"]
