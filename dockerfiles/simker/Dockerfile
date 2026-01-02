@@ -306,6 +306,7 @@ RUN apt-get install -y\
 # ===============================================================================================
 # Create the folder
 RUN mkdir /tools
+RUN mkdir /tools/scripts
 
 # Installing runtime dependencies
 RUN apt-get install -y \
@@ -353,6 +354,7 @@ ENV PATH="/tools/ngspice/bin:${PATH}"
 ENV PATH="/tools/verilator/bin:${PATH}"
 ENV PATH="/tools/xschem/usr/local/bin:${PATH}"
 ENV PATH="/tools/openvaf-r/bin/:${PATH}"
+ENV PATH="/tools/scripts/:${PATH}"
 
 # Adding a variable to make sure xschem can start
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
@@ -364,10 +366,11 @@ ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 RUN rm -rf /var/lib/apt/lists/*
 
 # ===============================================================================================
-# Import binaries 
+# Import binaries and tools
 # ===============================================================================================
 # Copy binaries (last step, to let all the previous step run while building the first image)
 COPY --from=build /tools /tools
+ADD ./scripts /tools/scripts
 
 # ===============================================================================================
 # Set docker entrypoint
