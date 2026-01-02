@@ -322,7 +322,8 @@ RUN apt-get install -y \
     clang \
     g++ \
     ccache \
-    make
+    make \
+    zlib1g-dev 
 
 # Ensuring XSCHEM env variables
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem/"
