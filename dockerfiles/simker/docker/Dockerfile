@@ -324,7 +324,9 @@ RUN apt-get install -y \
     g++ \
     ccache \
     make \
-    zlib1g-dev 
+    zlib1g-dev \
+    build-essential \
+    mold
 
 # Ensuring XSCHEM env variables
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem/"
