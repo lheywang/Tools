@@ -206,7 +206,8 @@ RUN /work/res/gcc/configure \
     --disable-multilib \
     --disable-libssp \
     --disable-libgomp \
-    --disable-libquadmath
+    --disable-libquadmath \
+    --enable-default-pie
 RUN make -j8 
 RUN make install
 
