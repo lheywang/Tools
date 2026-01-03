@@ -29,8 +29,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
 % All of the tools can be used from that command line input. And, if you need %
-%  some help, you can always type "simker" or "help" to show this message, as %
-%  well as help [tool name] to get more specific help !                       %
+%  some help, you can always type "simker" to show this message, as           %
+%  well as simker_help [tool name] to get more specific help !                %
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %

@@ -9,19 +9,19 @@
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
-% HELP PAGE : GTKWAVE                                                         %
+% HELP PAGE : XSCHEM                                                          %
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                             %
-% GTKWAVE is a digital waveform viewer, mostly for RTL designs (VHDL /        %
-%  Verilog).                                                                  %
+% XSCHEM is an open-source schematic capture tool. You can use it, with the   %
+%  other tools to simplify the schematic capture rather than writting netlist %
 %                                                                             %
-% Thus, it could be used with Verilator or GHDL, depending on the source      %
-%  language.                                                                  %
-%  It support different outputs formats : .ghw from GHDL, and .vcd from       %
-%  verilator.                                                                 %
+% There's plenty of documation available on the manual :                      %
+%  https://xschem.sourceforge.io/stefan/xschem_man/xschem_man.pdf             %
 %                                                                             %
-% It's documentation could be found here :                                    %
-%  https://gtkwave.github.io/gtkwave/                                         %
+% With the docker provided scripts, you can simplify the management of a lot  %
+%  of procedure. For example, there's scripts to generate the .sym generation %
+%  for digital logic, while combinating them into an higher level entity.     %
+%  You can see the help pages related to it ! (help wrappergen)               %
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
