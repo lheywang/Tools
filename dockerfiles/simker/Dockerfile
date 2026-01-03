@@ -356,6 +356,9 @@ ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 ENV XSCHEM_LIBRARY_PATH="/tools/xschem/usr/local/share/xschem/xschem_library/devices/"
 ENV XSCHEM_LIBRARY_PATH="/tools/xschem/usr/local/share/xschem/systemlib/:${XSCHEM_LIBRARY_PATH}"
 
+# Add a ngspice lib path : 
+ENV NGSPICE_LIB_DIR=/tools/lib/
+
 # ===============================================================================================
 # Final cleanup
 # ===============================================================================================
@@ -372,12 +375,17 @@ RUN mkdir -p /tools/doc
 
 RUN mkdir -p /examples
 
+RUN mkdir -p /tools/lib
+
 # Import scripts
 ADD ./scripts /tools/scripts
 ADD ./doc /tools/doc
 
 # Import examples
 ADD ./examples /examples
+
+# Import ngspice libs
+ADD ./lib /tools/lib
 
 # Copy binaries (last step, to let all the previous step run while building the first image)
 COPY --from=build /tools /tools
