@@ -2,7 +2,7 @@
 # Simker dockerfile                                                                              #
 #                                                                                                #
 # l.heywang <leonard.heywang@proton.me>                                                          #
-# 25-12-2025                                                                                     #
+# 03-01-2026                                                                                     #
 #                                                                                                #
 # Build an electronic simulation docker, with all of the tools needed for both digital (GHDL,    #
 #    Verilator) or analog (Ngspice) simulation. Include openvaf-r for veriloga behavioral models.#
@@ -370,12 +370,23 @@ RUN mkdir -p /tools
 RUN mkdir -p /tools/scripts
 RUN mkdir -p /tools/doc
 
+RUN mkdir -p /examples
+
 # Import scripts
 ADD ./scripts /tools/scripts
 ADD ./doc /tools/doc
 
+# Import examples
+ADD ./examples /examples
+
 # Copy binaries (last step, to let all the previous step run while building the first image)
 COPY --from=build /tools /tools
+
+# ===============================================================================================
+# Running install script, to gather some versions : 
+# ===============================================================================================
+# Get tools versions : 
+RUN /tools/scripts/getversions
 
 # ===============================================================================================
 # Set docker entrypoint
