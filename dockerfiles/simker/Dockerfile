@@ -304,10 +304,6 @@ RUN apt-get install -y\
 # ===============================================================================================
 # Install dependencies
 # ===============================================================================================
-# Create the folder
-RUN mkdir /tools
-RUN mkdir /tools/scripts
-
 # Installing runtime dependencies
 RUN apt-get install -y \
     libgnat-13 \  
@@ -325,9 +321,6 @@ RUN apt-get install -y \
     zlib1g-dev \
     build-essential \
     mold
-
-# Ensuring XSCHEM env variables
-ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem/"
 
 # ===============================================================================================
 # Display configuration
@@ -359,6 +352,10 @@ ENV PATH="/tools/scripts/:${PATH}"
 # Adding a variable to make sure xschem can start
 ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 
+# Update library path for xschem
+ENV XSCHEM_LIBRARY_PATH="/tools/xschem/usr/local/share/xschem/xschem_library/devices/"
+ENV XSCHEM_LIBRARY_PATH="/tools/xschem/usr/local/share/xschem/systemlib/:${XSCHEM_LIBRARY_PATH}"
+
 # ===============================================================================================
 # Final cleanup
 # ===============================================================================================
@@ -366,14 +363,23 @@ ENV XSCHEM_SHAREDIR="/tools/xschem/usr/local/share/xschem"
 RUN rm -rf /var/lib/apt/lists/*
 
 # ===============================================================================================
-# Import binaries and tools
+# Import binaries, tools and static data
 # ===============================================================================================
+# Creating folders : 
+RUN mkdir -p /tools
+RUN mkdir -p /tools/scripts
+RUN mkdir -p /tools/doc
+
+# Import scripts
+ADD ./scripts /tools/scripts
+ADD ./doc /tools/doc
+
 # Copy binaries (last step, to let all the previous step run while building the first image)
 COPY --from=build /tools /tools
-ADD ./scripts /tools/scripts
 
 # ===============================================================================================
 # Set docker entrypoint
 # ===============================================================================================
 # Setting CMD / ENTRYPOINT
-CMD ["/bin/sh"]
+ENTRYPOINT ["/bin/sh"]
+CMD ["/tools/scripts/simker"]
