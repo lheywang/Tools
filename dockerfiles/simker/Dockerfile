@@ -22,11 +22,11 @@ FROM ubuntu:24.04 AS build
 WORKDIR /work
 
 # Updating OS to the latest versions
-RUN apt-get update --fix-missing && apt-get upgrade -y
+RUN apt-get update --fix-missing && apt-get upgrade -y --fix-missing 
 RUN apt-get install -y -f
 
 # Install software build dependencies
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     cmake \
     make \
     texinfo \
@@ -43,7 +43,7 @@ RUN apt-get install -y \
 # -----------------------------------------------------------------------------------------------
 # Verilator deps : 
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     help2man \
     perl \
     python3 \
@@ -65,7 +65,7 @@ RUN apt-get install -y \
 # -----------------------------------------------------------------------------------------------
 # GHDL deps : 
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     gnat \
     libgmp-dev \
     libmpfr-dev \
@@ -74,7 +74,7 @@ RUN apt-get install -y \
 # -----------------------------------------------------------------------------------------------
 # NGSPICE deps
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     libtool \
     libxaw7-dev \
     libreadline-dev
@@ -82,7 +82,7 @@ RUN apt-get install -y \
 # -----------------------------------------------------------------------------------------------
 # XSCHEM deps :
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     mawk \
     libx11-dev \
     libxpm-dev \
@@ -96,13 +96,13 @@ RUN apt-get install -y \
 # -----------------------------------------------------------------------------------------------
 # GAW3 deps :
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     libgtk-4-dev
 
 # -----------------------------------------------------------------------------------------------
 # GTKWave deps :
 # -----------------------------------------------------------------------------------------------
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     meson \
     gperf \
     flex \
@@ -119,7 +119,7 @@ RUN apt-get install -y \
 # OpenVAF-Reloaded deps
 # -----------------------------------------------------------------------------------------------
 # Get C compilers
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     llvm \
     clang
 
@@ -284,7 +284,7 @@ RUN strip /tools/**/bin/* || true
 FROM ubuntu:24.04 AS runtime
 
 # Updates and runtime libs install
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y --fix-missing
 RUN apt-get install -y \
     libx11-6 \
     libxrender1 \
@@ -305,7 +305,7 @@ RUN apt-get install -y\
 # Install dependencies
 # ===============================================================================================
 # Installing runtime dependencies
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     libgnat-13 \  
     tcl8.6 \
     tk8.6 \
@@ -326,7 +326,7 @@ RUN apt-get install -y \
 # Display configuration
 # ===============================================================================================
 # Installing deps 
-RUN apt-get install -y \
+RUN apt-get install -y --fix-missing \
     xauth \
     x11-apps \
     libxext6 \
