@@ -299,7 +299,8 @@ RUN apt-get install -y \
 
 # Add a nice utility to edit files from the docker
 RUN apt-get install -y\
-   nano
+   nano \
+   git
 
 # ===============================================================================================
 # Install dependencies
@@ -320,7 +321,11 @@ RUN apt-get install -y --fix-missing \
     make \
     zlib1g-dev \
     build-essential \
-    mold
+    mold \
+    iverilog \
+    python3-jinja2 \
+    python3-ply \
+    python3-setuptools
 
 # ===============================================================================================
 # Display configuration
@@ -389,6 +394,18 @@ ADD ./lib /tools/lib
 
 # Copy binaries (last step, to let all the previous step run while building the first image)
 COPY --from=build /tools /tools
+
+# ===============================================================================================
+# Install final tools 
+# ===============================================================================================
+# Install Pyverilog parser
+RUN mkdir -p /tools/pyverilog
+WORKDIR /tools
+RUN git clone --recursive -j 4  https://github.com/PyHDI/Pyverilog.git pyverilog
+
+# Launch install
+WORKDIR /tools/pyverilog
+RUN python3 setup.py install
 
 # ===============================================================================================
 # Running install script, to gather some versions : 

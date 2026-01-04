@@ -6,12 +6,16 @@
 # This tool parse json (from verilator), and look for the ports. Then, it'll
 # generate a top level file, which just combine them.
 # -----------------------------------------------------------------------------------------
-import json
 import argparse
 from pathlib import Path
-import subprocess
 import datetime
 from dataclasses import dataclass
+
+from pyverilog.vparser.parser import parse
+from pyverilog.vparser.ast import ModuleDef, Width
+from pyverilog.vparser.ast import Input as astInput
+from pyverilog.vparser.ast import Output as astOutput
+from pyverilog.vparser.ast import Inout as astInout
 
 
 @dataclass(frozen=True)
@@ -19,7 +23,7 @@ class dataport:
     name: str
     direction: str
     type: str
-    width: int
+    width: str
 
 
 def va2v(input: Path, output: Path) -> None:
@@ -60,75 +64,47 @@ def va2v(input: Path, output: Path) -> None:
 
     return
 
-
-def generate_json(sources: list[Path], targets: list[Path]) -> None:
-    """
-    This function call verilator to generate the JSON output of the module, enabling further port couting procedure.
-    """
-    for index, source in enumerate(sources):
-        subprocess.run(
-            ["verilator", "--json-only-output", f"{targets[index]}", f"{source}"],
-            text=True,
-        )
-    return
-
-
-def parse_json(
+def parse_file(
     files: list[Path],
 ) -> tuple[list[dataport], list[dataport], list[dataport]]:
     """
     This function count the port, and resolve their specs into the generated JSON.
     """
+
     # Init ports
-    inputs = []
-    outputs = []
+    ins = []
+    outs = []
     inouts = []
     modules = []
 
     for file in files:
-        obj = None
-        with open(file, "r") as f:
-            obj = json.load(f)
-
-        # Fetch module name
-        name = obj["modulesp"][0]["name"]
-        print(f"Found module : {name}")
-        modules.append(name)
-
-        # Fetching port types
-        print("Fetching port types...")
-        types_tmp = obj["miscsp"][0]["typesp"]
-
-        types = dict()
-
-        for type_tmp in types_tmp:
-            types[type_tmp["dtypep"]] = type_tmp.get("range", "0:0")
-
-        # Fetching ports ...
-        print("Fetching ports ...")
-        for port in obj["modulesp"][0]["stmtsp"]:
-            if (port["type"] != "VAR") or port["direction"] == "NONE":
+        print(f"Parsing file : {str(file)} ...")
+        ast, directives = parse([f"{str(file)}"])
+        
+        for item in ast.description.definitions:
+            if not isinstance(item, ModuleDef):
                 continue
 
-            print(
-                f"Found port : {port['name']} : {port['direction']} ({port['dtypep']}) !"
-            )
-            tmp = dataport(
-                f"{name}#{port['name']}",
-                port["direction"],
-                port["dtypep"],
-                types[port["dtypep"]],
-            )
+            for port in item.portlist.ports:
+                elems = port.children()
 
-            match port["direction"]:
-                case "INPUT":
-                    inputs.append(tmp)
-                case "OUTPUT":
-                    outputs.append(tmp)
-                case "INOUT":
-                    inouts.append(tmp)
+                for elem in elems:
+                    if isinstance(elem, (astInput, astOutput, astInout)):
 
-    return inputs, outputs, inouts, modules
+                        width = "0:0"
+                        if isinstance(elem.width, Width):
+                            width = f"{elem.width.msb}:{elem.width.lsb}"
+
+                        if isinstance(elem, astInput):
+                            ins.append(dataport(f"{item.name}#{elem.name}", "INPUT", "NONE", str(width)))
+                        elif isinstance(elem, astOutput):
+                            outs.append(dataport(f"{item.name}#{elem.name}", "OUTPUT", "NONE", str(width)))
+                        elif isinstance(elem, astInout):
+                            inouts.append(dataport(f"{item.name}#{elem.name}", "INOUT", "NONE", str(width)))
+
+            modules.append(f"{item.name}")
+
+    return ins, outs, inouts, modules
 
 
 def match_ports(
@@ -345,11 +321,8 @@ if __name__ == "__main__":
         sources = [vlog]
 
     # Generate the JSON data and extract the data
-    print("Generating JSON reports ...")
-    generate_json(sources, extracted)
-
-    print("Reading reports ...")
-    inputs, outputs, inouts, modules = parse_json(extracted)
+    print("Parsing files ...")
+    inputs, outputs, inouts, modules = parse_file(sources)
 
     # Optionnaly, match the ports :
     wires = []
