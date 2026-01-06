@@ -64,6 +64,7 @@ def va2v(input: Path, output: Path) -> None:
 
     return
 
+
 def parse_file(
     files: list[Path],
 ) -> tuple[list[dataport], list[dataport], list[dataport]]:
@@ -80,7 +81,7 @@ def parse_file(
     for file in files:
         print(f"Parsing file : {str(file)} ...")
         ast, directives = parse([f"{str(file)}"])
-        
+
         for item in ast.description.definitions:
             if not isinstance(item, ModuleDef):
                 continue
@@ -96,11 +97,32 @@ def parse_file(
                             width = f"{elem.width.msb}:{elem.width.lsb}"
 
                         if isinstance(elem, astInput):
-                            ins.append(dataport(f"{item.name}#{elem.name}", "INPUT", "NONE", str(width)))
+                            ins.append(
+                                dataport(
+                                    f"{item.name}#{elem.name}",
+                                    "INPUT",
+                                    "NONE",
+                                    str(width),
+                                )
+                            )
                         elif isinstance(elem, astOutput):
-                            outs.append(dataport(f"{item.name}#{elem.name}", "OUTPUT", "NONE", str(width)))
+                            outs.append(
+                                dataport(
+                                    f"{item.name}#{elem.name}",
+                                    "OUTPUT",
+                                    "NONE",
+                                    str(width),
+                                )
+                            )
                         elif isinstance(elem, astInout):
-                            inouts.append(dataport(f"{item.name}#{elem.name}", "INOUT", "NONE", str(width)))
+                            inouts.append(
+                                dataport(
+                                    f"{item.name}#{elem.name}",
+                                    "INOUT",
+                                    "NONE",
+                                    str(width),
+                                )
+                            )
 
             modules.append(f"{item.name}")
 
@@ -116,10 +138,12 @@ def match_ports(
     wires = []
     internals = []
 
-    def get_wires(ports_in: list[dataport],ports_out: list[dataport]) -> list[dataport]:
+    def get_wires(
+        ports_in: list[dataport], ports_out: list[dataport]
+    ) -> list[dataport]:
         t_wires = []
 
-        # That's not really nice in terms of performance, but as they're top modules, we don't expect very long lists, the delta is acceptable.
+        # That's not really nice in terms of performance O(n2), but as they're top modules, we don't expect very long lists, the delta is acceptable.
         for port1 in ports_in:
             for port2 in ports_out:
                 if port1 is port2:
@@ -134,14 +158,14 @@ def match_ports(
                             port1.width,
                         )
                     )
-                    # ports.remove(port2)
 
         return t_wires
+
     # end of function
 
-    # Matching the ports within them : 
+    # Matching the ports within them :
     wires.extend(get_wires(inputs, inputs))
-    wires.extend(get_wires(outputs,outputs))
+    wires.extend(get_wires(outputs, outputs))
     wires.extend(get_wires(inouts, inouts))
 
     # Matching port that are output to inputs
@@ -180,10 +204,12 @@ def generate_module(
         globnet = []
         for wire in wires:
             globnet.append(wire.name)
-            # Add the comma if needed : 
+            # Add the comma if needed :
             if first != False:
                 f.write(",")
-            f.write(f"\n    {wire.direction.lower():8} [{str(wire.width).center(8)}] {wire.name.replace("#", "_")}")
+            f.write(
+                f"\n    {wire.direction.lower():8} [{str(wire.width).center(8)}] {wire.name.replace("#", "_")}"
+            )
             first = True
 
         # Generating a wire net list and add them to the module
@@ -192,41 +218,47 @@ def generate_module(
             internet.append(wire.name)
 
         def append_nets(netlist: list[dataport], type: str, first: bool):
-            # Iterate over the nets : 
+            # Iterate over the nets :
             for net in netlist:
 
-                # Ensure the net is not global 
-                if (net.name.split("#")[-1] not in globnet) and (net.name.split("#")[-1] not in internet) :
+                # Ensure the net is not global
+                if (net.name.split("#")[-1] not in globnet) and (
+                    net.name.split("#")[-1] not in internet
+                ):
 
-                    # Add the comma if needed : 
+                    # Add the comma if needed :
                     if first != False:
                         f.write(",")
 
                     # Write the net and update the first
-                    f.write(f"\n    {type:8} [{str(net.width).center(8)}] {net.name.replace("#", "_")}")
+                    f.write(
+                        f"\n    {type:8} [{str(net.width).center(8)}] {net.name.replace("#", "_")}"
+                    )
                     first = True
 
         # Adding unique ports :
-
-        print(wires)
         append_nets(inouts, "inout", first)
         append_nets(inputs, "input", first)
         append_nets(outputs, "output", first)
 
-        # Closing module init : 
+        # Closing module init :
         f.write("\n\n);\n")
 
-        # Adding the wires : 
+        # Adding the wires :
         for wire in internals:
-            f.write(f"\n    wire [{str(wire.width).center(8)}] {wire.name.replace("#", "_")};")
+            f.write(
+                f"\n    wire [{str(wire.width).center(8)}] {wire.name.replace("#", "_")};"
+            )
         f.write("\n\n")
 
-        def append_module_net(netlist: list[dataport], file, module_name, first) -> bool:
+        def append_module_net(
+            netlist: list[dataport], file, module_name, first
+        ) -> bool:
 
-            # Iterate over the nets lists : 
+            # Iterate over the nets lists :
             for net in netlist:
 
-                # If the net is from within this module : 
+                # If the net is from within this module :
                 if net.name.split("#")[0] == module_name:
 
                     # Append comma if needed
@@ -234,10 +266,16 @@ def generate_module(
                         file.write(",")
 
                     # Write the verilog syntax to connect it
-                    if (net.name.split("#")[-1] in globnet) or (net.name.split("#")[-1] in internet): 
-                        file.write(f"\n        .{str(net.name.split("#")[-1]):12}({net.name.split("#")[-1]})")
+                    if (net.name.split("#")[-1] in globnet) or (
+                        net.name.split("#")[-1] in internet
+                    ):
+                        file.write(
+                            f"\n        .{str(net.name.split("#")[-1]):12}({net.name.split("#")[-1]})"
+                        )
                     else:
-                        file.write(f"\n        .{str(net.name.split("#")[-1]):12}({net.name.replace("#", "_")})")
+                        file.write(
+                            f"\n        .{str(net.name.split("#")[-1]):12}({net.name.replace("#", "_")})"
+                        )
                     first = True
 
             return first
@@ -265,8 +303,132 @@ def generate_module(
     return
 
 
-def generate_sym():
-    pass
+def generate_sym(
+    target: Path,
+    analog: bool,
+    inputs: list[dataport],
+    outputs: list[dataport],
+    inouts: list[dataport],
+    internals: list[dataport]
+) -> None:
+
+    # Define space between pins :
+    PITCH = 20
+
+    # Define the offsets from the sides :
+    OFFSET = PITCH / 2
+
+    # Defie the size of a pad :
+    PIN_SIZE = 5
+
+    # Handling the removal of the already_handled nets : 
+    removals = [net.name for net in internals]
+
+    i_inputs = []
+    i_outputs = []
+    i_inouts = []
+
+    for ins in inputs:
+        if ins.name.split("#")[-1] not in removals:
+            i_inputs.append(ins)
+    for ins in outputs:
+        if ins.name.split("#")[-1] not in removals:
+            i_outputs.append(ins)
+    for ins in inouts:
+        if ins.name.split("#")[-1] not in removals:
+            i_inouts.append(ins)
+
+    print(i_inputs, i_outputs, i_inouts)
+
+    with open(target, "w+") as f:
+
+        # Append the basic elements of the file :
+        f.write("v {xschem version=3.4.4 file_version=1.2}\n")
+        f.write("* This file was autogenerated by the genwrapper script.\n")
+        f.write("* Please do not edit it by hand.\n")
+
+        # Append some data :
+        f.write("V {}\n")
+        f.write("S {}\n")
+        f.write("E {}\n\n")
+
+        # Get sizes of the symbol box :
+        def get_dimension(size: int) -> int:
+            return ((size - 1) * PITCH) + (2 * OFFSET)
+
+        # Then, call the functions and determine the size matrix (with a minimum to 40 to ensure a visible symbol)
+        height = max(get_dimension(len(inputs)), get_dimension(len(outputs)), 40)
+        width = max(get_dimension(len(inouts)), 40.0)
+
+        coordinates = [
+            [-(height / 2), -(width / 2), (height / 2), -(width / 2)],
+            [(height / 2), -(width / 2), (height / 2), (width / 2)],
+            [(height / 2), (width / 2), -(height / 2), (width / 2)],
+            [-(height / 2), (width / 2), -(height / 2), -(width / 2)],
+        ]
+
+        # Draw the box on the symbol :
+        for coordinate in coordinates:
+            f.write(
+                f"L 4 {coordinate[0]} {coordinate[1]} {coordinate[2]} {coordinate[3]} {"{}"}\n"
+            )
+        f.write("\n")
+
+        # Then, create the coordinates for the pins :
+        def get_pins_position(
+            orig: int, fixed: int, number: int
+        ) -> list[list[int, int]]:
+            pins = []
+            act_pos = orig - OFFSET
+
+            for pin_id in range(number):
+                pins.append([act_pos, fixed])
+                act_pos -= PITCH
+
+            return pins
+
+        in_pins = get_pins_position((height / 2), -(width / 2), len(inputs))
+        out_pins = get_pins_position((height / 2), (width / 2), len(outputs))
+        io_pins = get_pins_position(-(width / 2), -(height / 2), len(inouts))
+
+        # Then, place the pins on the file :
+        def place_pins(
+            pins: list[list[int, int]],
+            pin_data: list[dataport],
+            direction: str,
+            pins_cnt,
+            file,
+        ) -> None:
+            for index, pin in enumerate(pins):
+                extrems = [
+                    [pin[0] - (PIN_SIZE / 2), pin[1] - (PIN_SIZE / 2)],
+                    [pin[0] + (PIN_SIZE / 2), pin[1] + (PIN_SIZE / 2)],
+                ]
+                file.write(
+                    f"B 5 {extrems[0][0]} {extrems[0][1]} {extrems[1][0]} {extrems[1][1]} {"{"}{f"name={pin_data[index].name.replace("#", "_")} dir={direction} seq={pins_cnt}"}{"}"}\n"
+                )
+                pins_cnt += 1
+            return pins_cnt
+
+        # We add a variable to track the seq id
+        pins_cnt = 0
+        pins_cnt = place_pins(in_pins, inputs, "in", pins_cnt, f)
+        pins_cnt = place_pins(out_pins, outputs, "out", pins_cnt, f)
+        pins_cnt = place_pins(io_pins, inouts, "inout", pins_cnt, f)
+        f.write("\n")
+
+        # Add entity name and module :
+        f.write(f"T {"{"}{str(target).split(".")[-1]}{"}"} 0 5 0 0 0.2 0.2\n")
+        f.write(f"T {"{@name}"} 0 -5 0 0 0.2 0.2\n\n")
+
+        # Add pins names :
+
+        # Todo : 
+        # Handle the unique nets (rtsn) that are wired to multiple inputs.
+        # Write them to the file
+        # Symbol is rotated --> Rotate it counterclockwise by 90 degrees.
+
+    return
 
 
 if __name__ == "__main__":
@@ -331,6 +493,7 @@ if __name__ == "__main__":
     sources = [Path(t).resolve() for t in args.files]
     extracted = [Path(tmp / t.name).with_suffix(".json") for t in sources]
     top = Path(args.name).resolve()
+    sym = top.with_suffix(".sym")
 
     # If we're in analog mode : Convert the file into it's digital stub
     if args.analog == "yes":
@@ -349,27 +512,20 @@ if __name__ == "__main__":
     internals = []
     if args.wire == "yes":
         print("Combining ports into single ports ...")
-        inputs, outputs, inouts, wires, internals = match_ports(
-            inputs, outputs, inouts
-        )
+        inputs, outputs, inouts, wires, internals = match_ports(inputs, outputs, inouts)
 
-    # Finally, generating the top level entity :
+    # If needed, generating the top level entity :
     if args.analog == "no":
-        generate_module(
-            top,
-            modules,
-            inputs,
-            outputs,
-            inouts,
-            wires,
-            internals
-        )
+        print("Generating verilog top module ...")
+        generate_module(top, modules, inputs, outputs, inouts, wires, internals)
 
-    print(modules)
-    print(inputs)
-    print(outputs)
-    print(inouts)
-    print(wires)
-    print(internals)
+    # Generating the symbol file:
+    if args.analog == "yes":
+        print("Generating analog symbol ...")
+        generate_sym(sym, True, inputs, outputs, inouts, internals)
+    else:
+        print("Generating digital symbol ...")
+        generate_sym(sym, False, inputs, outputs, inouts, internals)
 
-
+    # Finish and exit :
+    print("Finished")
