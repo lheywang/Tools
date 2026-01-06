@@ -4,10 +4,12 @@ import re
 import os
 import argparse
 
+
 def strip_comments(text):
-    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
-    text = re.sub(r'//.*', '', text)
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    text = re.sub(r"//.*", "", text)
     return text
+
 
 def generate_wrapper(verilog_files, wrapper_name):
     top_ports = []
@@ -18,18 +20,18 @@ def generate_wrapper(verilog_files, wrapper_name):
             print(f"Warning: File {v_file} not found. Skipping.")
             continue
 
-        with open(v_file, 'r') as f:
+        with open(v_file, "r") as f:
             content = strip_comments(f.read())
 
             # Find the module name
-            mod_match = re.search(r'module\s+(\w+)', content)
+            mod_match = re.search(r"module\s+(\w+)", content)
             if not mod_match:
                 continue
             mod_name = mod_match.group(1)
             inst_name = f"u_{mod_name}"
 
             # Extract ports: handles 'input [3:0] name' or 'output name'
-            port_pattern = r'(input|output)\s+(?:reg|wire)?\s*(\[.*?\])?\s*(\w+)'
+            port_pattern = r"(input|output)\s+(?:reg|wire)?\s*(\[.*?\])?\s*(\w+)"
             ports = re.findall(port_pattern, content)
 
             mod_connections = []
@@ -38,7 +40,9 @@ def generate_wrapper(verilog_files, wrapper_name):
                 unique_name = f"{mod_name}_{name}"
                 clean_size = size.strip() if size else ""
 
-                top_ports.append(f"    {direction} {clean_size} {unique_name}".replace("  ", " "))
+                top_ports.append(
+                    f"    {direction} {clean_size} {unique_name}".replace("  ", " ")
+                )
                 mod_connections.append(f"        .{name}({unique_name})")
 
             # Create the instantiation block
@@ -58,10 +62,20 @@ def generate_wrapper(verilog_files, wrapper_name):
         f.write(wrapper_code)
     print(f"Successfully generated: {wrapper_name}.v")
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a Verilog wrapper to expose all ports of multiple modules to Ngspice.")
-    parser.add_argument("files", nargs="+", help="Verilog files to include in the wrapper")
-    parser.add_argument("-o", "--output", default="top", help="Name of the output module/file (default: top)")
+    parser = argparse.ArgumentParser(
+        description="Generate a Verilog wrapper to expose all ports of multiple modules to Ngspice."
+    )
+    parser.add_argument(
+        "files", nargs="+", help="Verilog files to include in the wrapper"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default="top",
+        help="Name of the output module/file (default: top)",
+    )
 
     args = parser.parse_args()
     generate_wrapper(args.files, args.output)
