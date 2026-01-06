@@ -1,0 +1,27 @@
+v {xschem version=3.4.4 file_version=1.2}
+V {}
+S {}
+E {}
+G {type=subcircuit
+format="@name @pinlist @model"
+template="name=X1 model=dummy_div"
+spice_sym_def=".subckt dummy_div in gnd out
+R1 in out 1k
+R2 out gnd 1k
+.ends"
+}
+L 4 -40 -40 40 -40 {}
+L 4 -40 40 40 40 {}
+L 4 -40 -40 -40 40 {}
+L 4 40 -40 40 40 {}
+B 5 -42.5 -2.5 -37.5 2.5 {name=in dir=in seq=0}
+L 4 -40 0 -30 0 {}
+T {in} -28 -3 0 0 0.2 0.2 {}
+B 5 37.5 -2.5 42.5 2.5 {name=out dir=out seq=1}
+L 4 30 0 40 0 {}
+T {out} 22 -3 0 0 0.2 0.2 {}
+B 5 -2.5 37.5 2.5 42.5 {name=gnd dir=in seq=2}
+L 4 0 30 0 40 {}
+T {gnd} -5 22 0 0 0.2 0.2 {}
+T {@name} -15 -55 0 0 0.3 0.3 {}
+T {FIXED DIV} -35 -15 0 0 0.2 0.2 {}
