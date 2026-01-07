@@ -1,12 +1,21 @@
 #!/bin/env python3
 # -----------------------------------------------------------------------------------------
 # leonard heywang <leonard.heywang@proton.me>
-# 03-01-2026
+# 07-01-2026
 #
-# This tool parse json (from verilator), and look for the ports. Then, it'll
-# generate a top level file, which just combine them.
+# Thiscomplex tool is charged from a single, but quite large task : Generate the
+# .sym and optionnaly a top level verilog file.
+# This script is used to generate an abstraction layer for the user to directly map
+# more than just XSCHEM element into their schematic, such as veriloga models or digital
+# verilog models, without needing to know how, ad where to place each declarations.
+#
+# This tool expose some quality of live features such as :
+# - pin grouping for digital logic. By default, it won't expose multiple times the nets
+#   that share the same name : clk, rstn... It also work from outputs to inputs.
+# - Multiple options to configure files names, voltages used on the interfaces and so on...
 # -----------------------------------------------------------------------------------------
 import argparse
+import textwrap
 from pathlib import Path
 import datetime
 from dataclasses import dataclass
@@ -24,6 +33,7 @@ class dataport:
     direction: str
     type: str
     width: str
+    id: int
 
 
 def va2v(input: Path, output: Path) -> None:
@@ -78,6 +88,8 @@ def parse_file(
     inouts = []
     modules = []
 
+    id = 0
+
     for file in files:
         print(f"Parsing file : {str(file)} ...")
         ast, directives = parse([f"{str(file)}"])
@@ -103,6 +115,7 @@ def parse_file(
                                     "INPUT",
                                     "NONE",
                                     str(width),
+                                    id,
                                 )
                             )
                         elif isinstance(elem, astOutput):
@@ -112,6 +125,7 @@ def parse_file(
                                     "OUTPUT",
                                     "NONE",
                                     str(width),
+                                    id,
                                 )
                             )
                         elif isinstance(elem, astInout):
@@ -121,8 +135,11 @@ def parse_file(
                                     "INOUT",
                                     "NONE",
                                     str(width),
+                                    id,
                                 )
                             )
+
+                        id += 1
 
             modules.append(f"{item.name}")
 
@@ -156,6 +173,7 @@ def match_ports(
                             port1.direction,
                             port1.type,
                             port1.width,
+                            port1.id,
                         )
                     )
 
@@ -237,8 +255,8 @@ def generate_module(
                     first = True
 
         # Adding unique ports :
-        append_nets(inouts, "inout", first)
         append_nets(inputs, "input", first)
+        append_nets(inouts, "inout", first)
         append_nets(outputs, "output", first)
 
         # Closing module init :
@@ -297,18 +315,91 @@ def generate_module(
         f.write("endmodule\n\n")
 
         f.write(f"// ===============================================\n")
-        f.write(f"// FILE WAS CREATED ON :{datetime.datetime.now()}\n")
+        f.write(f"// FILE WAS CREATED ON : {datetime.datetime.now()}\n")
         f.write(f"// ===============================================\n")
 
     return
 
 
-def generate_analog_spice_string():
-    return ""
+def generate_analog_spice_string(
+    target: Path,
+    name: str,
+    inputs: list[dataport],
+    outputs: list[dataport],
+    inouts: list[dataport],
+    include: Path,
+):
+    # Generate names
+    model_name = f"{name}_model"
+    subckt_name = str(target.name).split(".")[0]
+
+    # Generate port names
+    inp_name = [net.name.replace("#", "_") for net in inputs]
+    out_name = [net.name.replace("#", "_") for net in outputs]
+    ion_name = [net.name.replace("#", "_") for net in inouts]
+
+    inp_str = str(*inp_name)
+    out_str = str(*out_name)
+    ion_str = str(*ion_name)
+
+    # TODO
+    # Match the port order (get back to the parser ??)
+
+    return f"""
+pre_osdi {str(include)}
+
+.subckt {subckt_name} {inp_str} {ion_str} {out_str}
+  .Model {model_name} {name}
+  .N1 {inp_str} {ion_str} {out_str} {model_name}
+.ends
+"""
 
 
-def generate_digital_spice_string():
-    return ""
+def generate_digital_spice_string(
+    target: Path,
+    name: str,
+    inputs: list[dataport],
+    outputs: list[dataport],
+    inouts: list[dataport],
+    include: Path,
+    voltage: float,
+):
+    # Generate the names 
+    model_name = f"{name}_model"
+    subckt_name = str(target.name).split(".")[0]
+
+    # First, compute the thresholds
+    low_th = round(voltage * 0.3, 1)
+    high_th = round(voltage * 0.7, 1)
+
+    # Generate port names
+    inp_name = [net.name.replace("#", "_") for net in inputs]
+    out_name = [net.name.replace("#", "_") for net in outputs]
+
+    inp_str = str(*inp_name)
+    out_str = str(*out_name)
+
+    # Generate digital nets naming : 
+    d_inp_name = [f"d_{val}" for val in inp_name]
+    d_out_name = [f"d_{val}" for val in out_name]
+
+    # Generate nets names
+    # TODO 
+    # Handle net order
+    # Handle bus splitting
+    # ...
+
+    return f"""
+.subckt {subckt_name} {inp_str} {out_str}
+  .model a2d adc_bridge(in_low={low_th} in_high={high_th})
+  .model d2a dac_bridge(out_low=0.0 out_high={voltage})
+
+  .model {model_name} d_cosim simulation="{str(include)}"
+
+
+    
+
+"""
 
 
 def generate_sym(
@@ -319,7 +410,9 @@ def generate_sym(
     inouts: list[dataport],
     wires: list[dataport],
     internals: list[dataport],
-    include: Path
+    include: Path,
+    modName : str,
+    voltage: float,
 ) -> None:
 
     # Define space between pins :
@@ -439,9 +532,12 @@ def generate_sym(
                     [pin[0] - (PIN_SIZE / 2), pin[1] - (PIN_SIZE / 2)],
                     [pin[0] + (PIN_SIZE / 2), pin[1] + (PIN_SIZE / 2)],
                 ]
+
+                # Add the pad
                 file.write(
                     f"B 5 {extrems[0][0]} {extrems[0][1]} {extrems[1][0]} {extrems[1][1]} {"{"}{f"name={pin_data[index].name.replace("#", "_")} dir={direction} seq={pins_cnt}"}{"}"}\n"
                 )
+
                 # Place the text near the pad :
                 x_pos = (
                     (pin[0] + TEXT_OFFSET_X)
@@ -475,11 +571,13 @@ def generate_sym(
         # Add the spice string :
         spice_string = ""
         if analog == True:
-            spice_string = generate_analog_spice_string()
+            spice_string = generate_analog_spice_string(
+                target, modName, i_inputs, i_outputs, i_inouts, include
+            )
         else:
-            spice_string = generate_digital_spice_string()
-
-        print(include)
+            spice_string = generate_digital_spice_string(
+                target, name, i_inputs, i_outputs, i_inouts, include, voltage
+            )
 
         # Finally, append the spice attributes to the model :
         f.write("\n")
@@ -495,6 +593,7 @@ def generate_sym(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.formatter_class = argparse.RawDescriptionHelpFormatter
     parser.add_argument(
         "files",
         nargs="+",
@@ -538,17 +637,29 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-va",
-        "--veriloga-file",
-        default="top.osdi",
-        help="Set the name of the OSDI file that must be used. Default to the same name as the veriloga file, with the extension renamed to .osdi.\nThis option is only used in analog mode."
+        "--veriloga_file",
+        default="None",
+        help="Set the name of the OSDI file that must be used. Default to the same name as the veriloga file, with the extension renamed to .osdi.\nThis option is only used in analog mode.",
     )
 
-    parser.description = """This tool enable the user to combine multiple verilog files into a single, higher level one.
-    especially usefull when working with d_cosim in ngspice, which can only tolerate a single digital block !"""
+    parser.description = textwrap.dedent(
+        """
+        This tool enable the user to combine multiple verilog files into a single, higher level one.
+        Especially usefull when working with d_cosim in ngspice, which can only tolerate a single digital block !"""
+    )
 
-    parser.epilog = """If you have some issues, perhaps use the -m=no / --merge_wires=no option to disable the grouping of the same 
-    net ports. With the default value, two ports that share the name "clk" would be exposed as one. This make the design simpler,
-    but could lead to issues. Always start here ! If none of the solution works, you still could write your own top, and let the script only generate the symbol for you !"""
+    parser.epilog = textwrap.dedent(
+        """ 
+        If you have some issues, perhaps use the -m=no / --merge_wires=no option to disable the grouping of the same 
+        net ports. With the default value, two ports that share the name "clk" would be exposed as one. This make the 
+        design simpler, but could lead to issues. Always start here ! If none of the solution works, you still could 
+        write your own top, and let the script only generate the symbol for you !
+    
+        WARNING : Due to some limitations of the pyverilog library used, some VALID syntax aren't handled. For example, 
+        only modules defined as : module(input in, output out); are handled, where 
+        the other syntax, module(in, out); input in; output out; won't be handled (will return a 0 port device.)
+"""
+    )
 
     # Parse arguments :
     args = parser.parse_args()
@@ -569,12 +680,21 @@ if __name__ == "__main__":
     top = Path(args.name).resolve()
     sym = top.with_suffix(".sym")
     include = None
+    modName = None
+
+    # Parsing the remaining args
+    voltage = float(args.voltage)
 
     # If we're in analog mode : Convert the file into it's digital stub
     if args.analog == "yes":
         print("Converting the .va file into it's verilog stub ...")
         sources = sources[0]
-        include = sources.with_suffix(".osdi")
+        include = (
+            sources.with_suffix(".osdi")
+            if args.veriloga_file == "None"
+            else Path(args.veriloga_file).resolve().with_suffix(".osdi")
+        )
+        modName = sources.name.split(".")[0]
         vlog = extracted[0].with_suffix(".v")
         va2v(sources, vlog)
         sources = [vlog]
@@ -586,7 +706,7 @@ if __name__ == "__main__":
     # Optionnaly, match the ports :
     wires = []
     internals = []
-    if args.merge_wires == "yes":
+    if (args.merge_wires == "yes") and (args.analog == "no"):
         print("Combining ports into single ports ...")
         inputs, outputs, inouts, wires, internals = match_ports(inputs, outputs, inouts)
 
@@ -596,12 +716,8 @@ if __name__ == "__main__":
         generate_module(top, modules, inputs, outputs, inouts, wires, internals)
 
     # Generating the symbol file:
-    if args.analog == "yes":
-        print("Generating analog symbol ...")
-        generate_sym(sym, True, inputs, outputs, inouts, wires, internals, include)
-    else:
-        print("Generating digital symbol ...")
-        generate_sym(sym, False, inputs, outputs, inouts, wires, internals, include)
+    mode = True if args.analog == "yes" else False
+    generate_sym(sym, mode, inputs, outputs, inouts, wires, internals, include, modName, voltage)
 
     # Finish and exit :
     print("Finished")

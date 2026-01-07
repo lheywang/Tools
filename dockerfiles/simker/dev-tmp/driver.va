@@ -1,11 +1,8 @@
 `include "constants.h"
 `include "discipline.h"
 
-module driver_va(in, out);
-    input in;
-    output out;
+module driver(input in, output out);
     electrical in, out;
-
 
     analog begin
 
