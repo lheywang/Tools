@@ -303,13 +303,22 @@ def generate_module(
     return
 
 
+def generate_analog_spice_string():
+    return ""
+
+
+def generate_digital_spice_string():
+    return ""
+
+
 def generate_sym(
     target: Path,
     analog: bool,
     inputs: list[dataport],
     outputs: list[dataport],
     inouts: list[dataport],
-    internals: list[dataport]
+    wires: list[dataport],
+    internals: list[dataport],
 ) -> None:
 
     # Define space between pins :
@@ -321,24 +330,42 @@ def generate_sym(
     # Defie the size of a pad :
     PIN_SIZE = 5
 
-    # Handling the removal of the already_handled nets : 
+    # Define the offset of a text to it's pad
+    TEXT_OFFSET_X = 5
+    TEXT_OFFSET_Y = 4
+    TEXT_CHAR_SIZE = 2.75
+
+    # Handling the removal of the already_handled nets :
     removals = [net.name for net in internals]
+    globnets = [net.name for net in wires]
 
-    i_inputs = []
-    i_outputs = []
-    i_inouts = []
+    removals.extend(globnets)
+    removed = []
 
-    for ins in inputs:
-        if ins.name.split("#")[-1] not in removals:
-            i_inputs.append(ins)
-    for ins in outputs:
-        if ins.name.split("#")[-1] not in removals:
-            i_outputs.append(ins)
-    for ins in inouts:
-        if ins.name.split("#")[-1] not in removals:
-            i_inouts.append(ins)
+    def remove_pins(ports: list[dataport]) -> list[dataport]:
+        retlist = []
+        for port in ports:
+            if port.name.split("#")[-1] not in removals:
+                retlist.append(port)
+            else:
+                if port.name.split("#")[-1] not in removed:
+                    removed.append(port)
+        return retlist
 
-    print(i_inputs, i_outputs, i_inouts)
+    # Remove global pins (duplicates, to let the symbol simpler : )
+    i_inputs = remove_pins(inputs)
+    i_outputs = remove_pins(outputs)
+    i_inouts = remove_pins(inouts)
+
+    # Finally, append the globnets
+    for globnet in wires:
+        match globnet.direction:
+            case "INPUT":
+                i_inputs.insert(0, globnet)
+            case "OUTPUT":
+                i_outputs.insert(0, globnet)
+            case "INOUT":
+                i_inouts.insert(0, globnet)
 
     with open(target, "w+") as f:
 
@@ -348,6 +375,7 @@ def generate_sym(
         f.write("* Please do not edit it by hand.\n")
 
         # Append some data :
+        f.write("K {}\n")
         f.write("V {}\n")
         f.write("S {}\n")
         f.write("E {}\n\n")
@@ -357,14 +385,20 @@ def generate_sym(
             return ((size - 1) * PITCH) + (2 * OFFSET)
 
         # Then, call the functions and determine the size matrix (with a minimum to 40 to ensure a visible symbol)
-        height = max(get_dimension(len(inputs)), get_dimension(len(outputs)), 40)
-        width = max(get_dimension(len(inouts)), 40.0)
+        height = max(get_dimension(len(i_inputs)), get_dimension(len(i_outputs)), 80.0)
+        width = max(get_dimension(len(i_inouts)), 80.0)
+
+        # Define some extrems :
+        x_left = -(width / 2)
+        x_right = width / 2
+        y_top = -(height / 2)
+        y_bot = height / 2
 
         coordinates = [
-            [-(height / 2), -(width / 2), (height / 2), -(width / 2)],
-            [(height / 2), -(width / 2), (height / 2), (width / 2)],
-            [(height / 2), (width / 2), -(height / 2), (width / 2)],
-            [-(height / 2), (width / 2), -(height / 2), -(width / 2)],
+            [x_left, y_bot, x_left, y_top],
+            [x_left, y_top, x_right, y_top],
+            [x_right, y_top, x_right, y_bot],
+            [x_right, y_bot, x_left, y_bot],
         ]
 
         # Draw the box on the symbol :
@@ -379,17 +413,17 @@ def generate_sym(
             orig: int, fixed: int, number: int
         ) -> list[list[int, int]]:
             pins = []
-            act_pos = orig - OFFSET
+            act_pos = orig + OFFSET
 
-            for pin_id in range(number):
-                pins.append([act_pos, fixed])
-                act_pos -= PITCH
+            for _ in range(number):
+                pins.append([fixed, act_pos])
+                act_pos += PITCH
 
             return pins
 
-        in_pins = get_pins_position((height / 2), -(width / 2), len(inputs))
-        out_pins = get_pins_position((height / 2), (width / 2), len(outputs))
-        io_pins = get_pins_position(-(width / 2), -(height / 2), len(inouts))
+        in_pins = get_pins_position(y_top, x_left, len(i_inputs))
+        out_pins = get_pins_position(y_top, x_right, len(i_outputs))
+        io_pins = get_pins_position(x_left, y_bot, len(i_inouts))
 
         # Then, place the pins on the file :
         def place_pins(
@@ -407,26 +441,51 @@ def generate_sym(
                 file.write(
                     f"B 5 {extrems[0][0]} {extrems[0][1]} {extrems[1][0]} {extrems[1][1]} {"{"}{f"name={pin_data[index].name.replace("#", "_")} dir={direction} seq={pins_cnt}"}{"}"}\n"
                 )
+                # Place the text near the pad :
+                x_pos = (
+                    (pin[0] + TEXT_OFFSET_X)
+                    if pin[0] < 0
+                    else (
+                        pin[0]
+                        - TEXT_OFFSET_X
+                        - (TEXT_CHAR_SIZE * len(pin_data[index].name))
+                    )
+                )
+                file.write(
+                    f"T {"{"}{pin_data[index].name.replace("#", "_")}{"}"} {x_pos} {pin[1] - TEXT_OFFSET_Y} 0 0.1 0.1 {"{}"}\n"
+                )
                 pins_cnt += 1
             return pins_cnt
 
         # We add a variable to track the seq id
         pins_cnt = 0
-        pins_cnt = place_pins(in_pins, inputs, "in", pins_cnt, f)
-        pins_cnt = place_pins(out_pins, outputs, "out", pins_cnt, f)
-        pins_cnt = place_pins(io_pins, inouts, "inout", pins_cnt, f)
+        pins_cnt = place_pins(in_pins, i_inputs, "in", pins_cnt, f)
+        pins_cnt = place_pins(out_pins, i_outputs, "out", pins_cnt, f)
+        pins_cnt = place_pins(io_pins, i_inouts, "inout", pins_cnt, f)
         f.write("\n")
 
         # Add entity name and module :
-        f.write(f"T {"{"}{str(target).split(".")[-1]}{"}"} 0 5 0 0 0.2 0.2\n")
-        f.write(f"T {"{@name}"} 0 -5 0 0 0.2 0.2\n\n")
+        name = str(target.name).split(".")[0]
+        f.write(
+            f"T {"{"}{name}{"}"} {0 - (TEXT_CHAR_SIZE * len(name))} {0 - (TEXT_CHAR_SIZE * len(name))} 0 0 0.2 0.2\n"
+        )
+        f.write(f"T {"{"}@name{"}"} 0 -10 0 0 0.2 0.2\n")
 
-        # Add pins names :
+        # Add the spice string :
+        spice_string = ""
+        if analog == True:
+            spice_string = generate_analog_spice_string()
+        else:
+            spice_string = generate_digital_spice_string()
 
-        # Todo : 
-        # Handle the unique nets (rtsn) that are wired to multiple inputs.
-        # Write them to the file
-        # Symbol is rotated --> Rotate it counterclockwise by 90 degrees.
+        # Finally, append the spice attributes to the model :
+        f.write("\n")
+        f.write(f"G {"{"}type=subcircuit \n")
+        f.write('format="@name @pinlist @model"\n')
+        f.write(f'template="name=X1 model={str(target.name).split(".")[0]}"\n')
+        f.write(f'spice_sym_def="{spice_string}"\n')
+        f.write("}\n\n")
+        f.write("* END OF THE SYMBOL\n")
 
     return
 
@@ -451,8 +510,8 @@ if __name__ == "__main__":
         help="Path of the temporary json files. Default to /tmp/wrappengen/",
     )
     parser.add_argument(
-        "-w",
-        "--wire",
+        "-m",
+        "--merge_wires",
         default="yes",
         help="Automatically merge the wire that share a same net into a single output at the end. Default = yes.",
     )
@@ -468,13 +527,19 @@ if __name__ == "__main__":
         default="no",
         help="Enable the analog mode, in which the file is treated as it, and generate a symbol from it. Default to no.",
     )
+    parser.add_argument(
+        "-v",
+        "--voltage",
+        default="3.3",
+        help='Enable to configure the voltage level used for the ADC / DAC bridges on digital blocks. Ignored for analog blocks. Default to "3.3" (V)',
+    )
 
     parser.description = """This tool enable the user to combine multiple verilog files into a single, higher level one.
     especially usefull when working with d_cosim in ngspice, which can only tolerate a single digital block !"""
 
-    parser.epilog = """If you have some issues, perhaps use the -w=no / --wire=no option to disable the grouping of the same 
+    parser.epilog = """If you have some issues, perhaps use the -m=no / --merge_wires=no option to disable the grouping of the same 
     net ports. With the default value, two ports that share the name "clk" would be exposed as one. This make the design simpler,
-    but could lead to issues. Always start here !"""
+    but could lead to issues. Always start here ! If none of the solution works, you still could write your own top, and let the script only generate the symbol for you !"""
 
     # Parse arguments :
     args = parser.parse_args()
@@ -510,7 +575,7 @@ if __name__ == "__main__":
     # Optionnaly, match the ports :
     wires = []
     internals = []
-    if args.wire == "yes":
+    if args.merge_wires == "yes":
         print("Combining ports into single ports ...")
         inputs, outputs, inouts, wires, internals = match_ports(inputs, outputs, inouts)
 
@@ -522,10 +587,10 @@ if __name__ == "__main__":
     # Generating the symbol file:
     if args.analog == "yes":
         print("Generating analog symbol ...")
-        generate_sym(sym, True, inputs, outputs, inouts, internals)
+        generate_sym(sym, True, inputs, outputs, inouts, wires, internals)
     else:
         print("Generating digital symbol ...")
-        generate_sym(sym, False, inputs, outputs, inouts, internals)
+        generate_sym(sym, False, inputs, outputs, inouts, wires, internals)
 
     # Finish and exit :
     print("Finished")
